@@ -15,6 +15,7 @@ use std::os::unix::io::RawFd;
 use std::sync::RwLock;
 
 use vm_memory::{bitmap::Bitmap, Address, GuestMemoryRegion, GuestRegionMmap};
+#[cfg(target_os = "linux")]
 use vmm_sys_util::eventfd::EventFd;
 
 #[cfg(feature = "vhost-user")]
@@ -292,6 +293,7 @@ pub trait VhostBackend: std::marker::Sized {
     /// # Arguments
     /// * `queue_index` - Index of the queue to modify.
     /// * `fd` - EventFd to trigger.
+    #[cfg(target_os = "linux")]
     fn set_vring_call(&self, queue_index: usize, fd: &EventFd) -> Result<()>;
 
     /// Set the eventfd that will be signaled by the guest when buffers are
@@ -300,6 +302,7 @@ pub trait VhostBackend: std::marker::Sized {
     /// # Arguments
     /// * `queue_index` - Index of the queue to modify.
     /// * `fd` - EventFd that will be signaled from guest.
+    #[cfg(target_os = "linux")]
     fn set_vring_kick(&self, queue_index: usize, fd: &EventFd) -> Result<()>;
 
     /// Set the eventfd that will be signaled by the guest when error happens.
@@ -307,6 +310,7 @@ pub trait VhostBackend: std::marker::Sized {
     /// # Arguments
     /// * `queue_index` - Index of the queue to modify.
     /// * `fd` - EventFd that will be signaled from guest.
+    #[cfg(target_os = "linux")]
     fn set_vring_err(&self, queue_index: usize, fd: &EventFd) -> Result<()>;
 }
 
@@ -378,6 +382,7 @@ pub trait VhostBackendMut: std::marker::Sized {
     /// # Arguments
     /// * `queue_index` - Index of the queue to modify.
     /// * `fd` - EventFd to trigger.
+    #[cfg(target_os = "linux")]
     fn set_vring_call(&mut self, queue_index: usize, fd: &EventFd) -> Result<()>;
 
     /// Set the eventfd that will be signaled by the guest when buffers are
@@ -386,6 +391,7 @@ pub trait VhostBackendMut: std::marker::Sized {
     /// # Arguments
     /// * `queue_index` - Index of the queue to modify.
     /// * `fd` - EventFd that will be signaled from guest.
+    #[cfg(target_os = "linux")]
     fn set_vring_kick(&mut self, queue_index: usize, fd: &EventFd) -> Result<()>;
 
     /// Set the eventfd that will be signaled by the guest when error happens.
@@ -393,6 +399,7 @@ pub trait VhostBackendMut: std::marker::Sized {
     /// # Arguments
     /// * `queue_index` - Index of the queue to modify.
     /// * `fd` - EventFd that will be signaled from guest.
+    #[cfg(target_os = "linux")]
     fn set_vring_err(&mut self, queue_index: usize, fd: &EventFd) -> Result<()>;
 }
 
@@ -443,14 +450,17 @@ impl<T: VhostBackendMut> VhostBackend for RwLock<T> {
         self.write().unwrap().get_vring_base(queue_index)
     }
 
+    #[cfg(target_os = "linux")]
     fn set_vring_call(&self, queue_index: usize, fd: &EventFd) -> Result<()> {
         self.write().unwrap().set_vring_call(queue_index, fd)
     }
 
+    #[cfg(target_os = "linux")]
     fn set_vring_kick(&self, queue_index: usize, fd: &EventFd) -> Result<()> {
         self.write().unwrap().set_vring_kick(queue_index, fd)
     }
 
+    #[cfg(target_os = "linux")]
     fn set_vring_err(&self, queue_index: usize, fd: &EventFd) -> Result<()> {
         self.write().unwrap().set_vring_err(queue_index, fd)
     }
@@ -501,14 +511,17 @@ impl<T: VhostBackendMut> VhostBackend for RefCell<T> {
         self.borrow_mut().get_vring_base(queue_index)
     }
 
+    #[cfg(target_os = "linux")]
     fn set_vring_call(&self, queue_index: usize, fd: &EventFd) -> Result<()> {
         self.borrow_mut().set_vring_call(queue_index, fd)
     }
 
+    #[cfg(target_os = "linux")]
     fn set_vring_kick(&self, queue_index: usize, fd: &EventFd) -> Result<()> {
         self.borrow_mut().set_vring_kick(queue_index, fd)
     }
 
+    #[cfg(target_os = "linux")]
     fn set_vring_err(&self, queue_index: usize, fd: &EventFd) -> Result<()> {
         self.borrow_mut().set_vring_err(queue_index, fd)
     }
@@ -611,22 +624,26 @@ mod tests {
             Ok(2)
         }
 
+        #[cfg(target_os = "linux")]
         fn set_vring_call(&mut self, queue_index: usize, _fd: &EventFd) -> Result<()> {
             assert_eq!(queue_index, 1);
             Ok(())
         }
 
+        #[cfg(target_os = "linux")]
         fn set_vring_kick(&mut self, queue_index: usize, _fd: &EventFd) -> Result<()> {
             assert_eq!(queue_index, 1);
             Ok(())
         }
 
+        #[cfg(target_os = "linux")]
         fn set_vring_err(&mut self, queue_index: usize, _fd: &EventFd) -> Result<()> {
             assert_eq!(queue_index, 1);
             Ok(())
         }
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_vring_backend_mut() {
         let b = RwLock::new(MockBackend {});
