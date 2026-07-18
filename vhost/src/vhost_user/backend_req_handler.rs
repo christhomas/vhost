@@ -1077,9 +1077,34 @@ fn get_socket_opt(fd: BorrowedFd<'_>, opt: libc::c_int) -> std::io::Result<libc:
 
 // Validate that the given file descriptor is an AF_UNIX SOCK_STREAM socket.
 fn validate_unix_stream_socket_fd(fd: BorrowedFd<'_>) -> Result<()> {
-    let domain = get_socket_opt(fd, libc::SO_DOMAIN).map_err(Error::InvalidSocketFd)?;
-    if domain != libc::AF_UNIX {
-        return Err(Error::NotUnixSocket);
+    // Linux exposes the socket domain via SO_DOMAIN; macOS/BSD has no such
+    // socket option, so fall back to getsockname() and inspect the family.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    {
+        let domain = get_socket_opt(fd, libc::SO_DOMAIN).map_err(Error::InvalidSocketFd)?;
+        if domain != libc::AF_UNIX {
+            return Err(Error::NotUnixSocket);
+        }
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    {
+        // SAFETY: getsockname writes at most `len` bytes into the zeroed
+        // sockaddr_storage and updates `len`; the return value is checked.
+        let mut addr: libc::sockaddr_storage = unsafe { std::mem::zeroed() };
+        let mut len = std::mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
+        let rc = unsafe {
+            libc::getsockname(
+                fd.as_raw_fd(),
+                std::ptr::addr_of_mut!(addr).cast::<libc::sockaddr>(),
+                &mut len,
+            )
+        };
+        if rc == -1 {
+            return Err(Error::InvalidSocketFd(std::io::Error::last_os_error()));
+        }
+        if libc::c_int::from(addr.ss_family) != libc::AF_UNIX {
+            return Err(Error::NotUnixSocket);
+        }
     }
 
     let sock_type = get_socket_opt(fd, libc::SO_TYPE).map_err(Error::InvalidSocketFd)?;

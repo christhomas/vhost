@@ -1,3 +1,7 @@
+#![cfg(target_os = "linux")]
+// This end-to-end frontend<->backend server test relies on eventfd, memfd, and the
+// EventFd-taking set_vring_* frontend methods — all Linux-only in this build.
+
 use std::fs::File;
 use std::io::Result;
 use std::os::unix::io::AsRawFd;

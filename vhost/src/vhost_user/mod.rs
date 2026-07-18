@@ -379,6 +379,9 @@ mod tests {
         mbar.wait();
     }
 
+    // Exercises the frontend, which relies on vmm_sys_util::eventfd + the
+    // EventFd-taking set_vring_* methods — both Linux-only in this build.
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_frontend_backend_process() {
         let mbar = Arc::new(Barrier::new(2));
